@@ -43,6 +43,7 @@
 #include <srs_protocol_json.hpp>
 #include <srs_app_pithy_print.hpp>
 #include <srs_app_log.hpp>
+#include <srs_app_rtmp_conn.hpp>
 
 #ifdef SRS_FFMPEG_FIT
 #include <srs_app_rtc_codec.hpp>
@@ -249,7 +250,7 @@ srs_error_t SrsRtcStreamManager::fetch_or_create(SrsRequest* r, SrsRtcStream** p
     // should always not exists for create a source.
     srs_assert (pool.find(stream_url) == pool.end());
 
-    srs_trace("new source, stream_url=%s", stream_url.c_str());
+    srs_trace("new rtc source, stream_url=%s", stream_url.c_str());
 
     source = new SrsRtcStream();
     if ((err = source->initialize(r)) != srs_success) {
@@ -300,12 +301,127 @@ ISrsRtcStreamEventHandler::~ISrsRtcStreamEventHandler()
 {
 }
 
+SrsRtcRtmpUpstream::SrsRtcRtmpUpstream(ISrsSourceBridger* bridger) {
+    trd_ = NULL;
+    bridger_ = bridger;
+}
+
+SrsRtcRtmpUpstream::~SrsRtcRtmpUpstream() {
+    if (trd_) {
+        trd_->stop();
+        srs_freep(trd_);
+    }
+}
+
+srs_error_t SrsRtcRtmpUpstream::start() {
+    srs_error_t err = srs_success;
+
+    srs_freep(trd_);
+    trd_ = new SrsSTCoroutine("rtc-rtmp-upstream", this);
+    trd_->set_stack_size(1024*256);
+
+    if ((err = trd_->start()) != srs_success) {
+        return srs_error_wrap(err, "coroutine");
+    }
+
+    return err;
+}
+
+srs_error_t SrsRtcRtmpUpstream::do_cycle() {
+    srs_error_t err = srs_success;
+
+    srs_trace("rtmp upstream: started");
+
+    srs_utime_t cto = 3 * SRS_UTIME_SECONDS;
+    srs_utime_t sto = 3 * SRS_UTIME_SECONDS;
+    std::string url = "rtmp://127.0.0.1:19350/a/b";
+    SrsSimpleRtmpClient* sdk = new SrsSimpleRtmpClient(url, cto, sto);
+
+    srs_trace("rtmp upstream: connecting %s", url.c_str());
+
+    if ((err = sdk->connect()) != srs_success) {
+        err = srs_error_wrap(err, "sdk connect");
+        goto out_free;
+    }
+
+    srs_trace("rtmp upstream: connected");
+
+    if ((err = sdk->play(60000)) != srs_success) {
+        err = srs_error_wrap(err, "sdk publish");
+        goto out_free;
+    }
+
+    srs_trace("rtmp upstream: start play");
+
+    if ((err = bridger_->on_publish()) != srs_success) {
+        goto out_unpub;
+    }
+
+    while (true) {
+        SrsCommonMessage* msg = NULL;
+        if ((err = sdk->recv_message(&msg)) != srs_success) {
+            err = srs_error_wrap(err, "recv message");
+            goto out_unpub;
+        }
+
+        if (msg->header.is_video()) {
+            SrsSharedPtrMessage msg2;
+            if ((err = msg2.create(msg)) != srs_success) {
+                err = srs_error_wrap(err, "create message");
+                goto out_unpub;
+            }
+            if ((err = bridger_->on_video(&msg2)) != srs_success) {
+                err = srs_error_wrap(err, "bridger");
+                goto out_unpub;
+            }
+        } else if (msg->header.is_audio()) {
+            SrsSharedPtrMessage msg2;
+            if ((err = msg2.create(msg)) != srs_success) {
+                err = srs_error_wrap(err, "create message");
+                goto out_unpub;
+            }
+            if ((err = bridger_->on_audio(&msg2)) != srs_success) {
+                err = srs_error_wrap(err, "bridger");
+                goto out_unpub;
+            }
+        }
+    }
+
+out_unpub:
+    bridger_->on_unpublish();
+
+out_free:
+    srs_freep(sdk);
+
+    return err;
+}
+
+srs_error_t SrsRtcRtmpUpstream::cycle() {
+    srs_error_t err = srs_success;
+
+    srs_usleep(1 * SRS_UTIME_SECONDS);
+
+    while (true) {
+        // We always check status first.
+        // @see https://github.com/ossrs/srs/issues/1634#issuecomment-597571561
+        if ((err = trd_->pull()) != srs_success) {
+            return srs_error_wrap(err, "srs rtc rtmp upstream");
+        }
+
+        err = do_cycle();
+        srs_trace("rtmp upstream: ret %s", srs_error_desc(err).c_str());
+
+        srs_usleep(3 * SRS_UTIME_SECONDS);
+    }
+}
+
 SrsRtcStream::SrsRtcStream()
 {
     is_created_ = false;
     is_delivering_packets_ = false;
 
     publish_stream_ = NULL;
+    rtmp_upstream_ = NULL;
     stream_desc_ = NULL;
 
     req = NULL;
@@ -314,6 +430,8 @@ SrsRtcStream::SrsRtcStream()
 #else
     bridger_ = new SrsRtcDummyBridger();
 #endif
+
+    rtmp_upstream_ = new SrsRtcRtmpUpstream(bridger_);
 }
 
 SrsRtcStream::~SrsRtcStream()
@@ -325,6 +443,7 @@ SrsRtcStream::~SrsRtcStream()
     srs_freep(req);
     srs_freep(bridger_);
     srs_freep(stream_desc_);
+    srs_freep(rtmp_upstream_);
 }
 
 srs_error_t SrsRtcStream::initialize(SrsRequest* r)
@@ -339,6 +458,10 @@ srs_error_t SrsRtcStream::initialize(SrsRequest* r)
         return srs_error_wrap(err, "bridge initialize");
     }
 #endif
+
+    if ((err = rtmp_upstream_->start()) != srs_success) {
+        return srs_error_wrap(err, "rtmp upstream initialize");
+    }
 
     return err;
 }
@@ -668,6 +791,8 @@ void SrsRtcFromRtmpBridger::on_unpublish()
 
 srs_error_t SrsRtcFromRtmpBridger::on_audio(SrsSharedPtrMessage* msg)
 {
+    // srs_trace("bridger: audio size=%d", msg->size);
+
     srs_error_t err = srs_success;
 
     // TODO: FIXME: Support parsing OPUS for RTC.
@@ -799,6 +924,8 @@ srs_error_t SrsRtcFromRtmpBridger::package_opus(char* data, int size, SrsRtpPack
 
 srs_error_t SrsRtcFromRtmpBridger::on_video(SrsSharedPtrMessage* msg)
 {
+    // srs_trace("bridger: video size=%d", msg->size);
+
     srs_error_t err = srs_success;
 
     // cache the sequence header if h264

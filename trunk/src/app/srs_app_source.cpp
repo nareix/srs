@@ -1722,19 +1722,19 @@ srs_error_t SrsSourceManager::fetch_or_create(SrsRequest* r, ISrsSourceHandler* 
     // should always not exists for create a source.
     srs_assert (pool.find(stream_url) == pool.end());
 
-#ifdef SRS_RTC
-    bool rtc_server_enabled = _srs_config->get_rtc_server_enabled();
-    bool rtc_enabled = _srs_config->get_rtc_enabled(r->vhost);
+// #ifdef SRS_RTC
+//     bool rtc_server_enabled = _srs_config->get_rtc_server_enabled();
+//     bool rtc_enabled = _srs_config->get_rtc_enabled(r->vhost);
 
-    // Get the RTC source and bridger.
-    SrsRtcStream* rtc = NULL;
-    if (rtc_server_enabled && rtc_enabled) {
-        if ((err = _srs_rtc_sources->fetch_or_create(r, &rtc)) != srs_success) {
-            err = srs_error_wrap(err, "init rtc %s", r->get_stream_url().c_str());
-            goto failed;
-        }
-    }
-#endif
+//     // Get the RTC source and bridger.
+//     SrsRtcStream* rtc = NULL;
+//     if (rtc_server_enabled && rtc_enabled) {
+//         if ((err = _srs_rtc_sources->fetch_or_create(r, &rtc)) != srs_success) {
+//             err = srs_error_wrap(err, "init rtc %s", r->get_stream_url().c_str());
+//             goto failed;
+//         }
+//     }
+// #endif
     srs_trace("new source, stream_url=%s", stream_url.c_str());
 
     source = new SrsSource();
@@ -1743,13 +1743,13 @@ srs_error_t SrsSourceManager::fetch_or_create(SrsRequest* r, ISrsSourceHandler* 
         goto failed;
     }
 
-#ifdef SRS_RTC
-    // If rtc enabled, bridge RTMP source to RTC,
-    // all RTMP packets will be forwarded to RTC source.
-    if (source && rtc) {
-        source->bridge_to(rtc->bridger());
-    }
-#endif
+// #ifdef SRS_RTC
+//     // If rtc enabled, bridge RTMP source to RTC,
+//     // all RTMP packets will be forwarded to RTC source.
+//     if (source && rtc) {
+//         source->bridge_to(rtc->bridger());
+//     }
+// #endif
     
     pool[stream_url] = source;
     *pps = source;

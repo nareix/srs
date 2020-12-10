@@ -26,6 +26,8 @@
 
 #include <srs_core.hpp>
 
+#include <srs_app_st.hpp>
+
 #include <vector>
 #include <map>
 #include <inttypes.h>
@@ -145,6 +147,18 @@ public:
     virtual void on_consumers_finished() = 0;
 };
 
+class SrsRtcRtmpUpstream: public ISrsCoroutineHandler {
+public:
+    SrsSTCoroutine* trd_;
+    virtual srs_error_t cycle();
+    srs_error_t do_cycle();
+    srs_error_t start();
+    SrsRtcRtmpUpstream(ISrsSourceBridger* bridger);
+    virtual ~SrsRtcRtmpUpstream() ;
+private:
+    ISrsSourceBridger* bridger_;
+};
+
 // A Source is a stream, to publish and to play with, binding to SrsRtcPublishStream and SrsRtcPlayStream.
 class SrsRtcStream
 {
@@ -158,6 +172,7 @@ private:
     SrsContextId _pre_source_id;
     SrsRequest* req;
     ISrsRtcPublishStream* publish_stream_;
+    SrsRtcRtmpUpstream *rtmp_upstream_;
     // Transmux RTMP to RTC.
     ISrsSourceBridger* bridger_;
     // Steam description for this steam.

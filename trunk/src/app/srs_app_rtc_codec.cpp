@@ -25,6 +25,7 @@
 #include <srs_kernel_codec.hpp>
 #include <srs_kernel_error.hpp>
 #include <srs_app_rtc_codec.hpp>
+#include <srs_app_log.hpp>
 
 static const int kFrameBufMax   = 40960;
 static const int kPacketBufMax  = 8192;
