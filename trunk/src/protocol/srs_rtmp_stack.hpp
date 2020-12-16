@@ -444,6 +444,7 @@ public:
     std::string tcUrl;
     std::string pageUrl;
     std::string swfUrl;
+    std::string rtmpUrl;
     double objectEncoding;
 // The data discovery from request.
 public:

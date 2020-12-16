@@ -1601,6 +1601,7 @@ SrsRequest* SrsRequest::copy()
     cp->stream = stream;
     cp->swfUrl = swfUrl;
     cp->tcUrl = tcUrl;
+    cp->rtmpUrl = rtmpUrl;
     cp->duration = duration;
     if (args) {
         cp->args = args->copy()->to_object();

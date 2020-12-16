@@ -156,6 +156,14 @@ srs_error_t SrsGoApiRtcPlay::do_serve_http(ISrsHttpResponseWriter* w, ISrsHttpMe
     request.app = app;
     request.stream = stream_name;
 
+    if ((prop = req->ensure_property_string("rtmpurl")) != NULL) {
+        request.rtmpUrl = prop->to_str();
+    }
+
+    if (request.rtmpUrl == "") {
+        request.rtmpUrl = "rtmp://localhost:19350/a/b";
+    }
+
     // TODO: FIXME: Parse vhost.
     // discovery vhost, resolve the vhost from config
     SrsConfDirective* parsed_vhost = _srs_config->get_vhost("");

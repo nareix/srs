@@ -38,6 +38,7 @@
 #include <srs_app_rtc_sdp.hpp>
 #include <srs_service_st.hpp>
 #include <srs_app_source.hpp>
+#include <srs_app_rtmp_conn.hpp>
 
 class SrsRequest;
 class SrsMetaCache;
@@ -57,6 +58,15 @@ class SrsRtpNackForReceiver;
 class SrsJsonObject;
 class SrsRtcPlayStreamStatistic;
 class SrsErrorPithyPrint;
+class ISrsRtcIdleChecker;
+
+class ISrsRtcIdleChecker
+{
+public:
+    ISrsRtcIdleChecker() {}
+    virtual ~ISrsRtcIdleChecker() {}
+    virtual void check_idle(int *bytes) = 0;
+};
 
 class SrsNtp
 {
@@ -75,7 +85,7 @@ public:
     static uint64_t kMagicNtpFractionalUnit;
 };
 
-class SrsRtcConsumer
+class SrsRtcConsumer: public ISrsRtcIdleChecker
 {
 private:
     SrsRtcStream* source;
@@ -88,7 +98,7 @@ private:
     bool mw_waiting;
     int mw_min_msgs;
 public:
-    SrsRtcConsumer(SrsRtcStream* s);
+    SrsRtcConsumer(SrsRtcStream* s, ISrsRtcIdleChecker *idle_checker);
     virtual ~SrsRtcConsumer();
 public:
     // When source id changed, notice client to print.
@@ -100,16 +110,24 @@ public:
     virtual srs_error_t dump_packets(std::vector<SrsRtpPacket2*>& pkts);
     // Wait for at-least some messages incoming in queue.
     virtual void wait(int nb_msgs);
+    void check_idle(int *bytes);
+private:
+    ISrsRtcIdleChecker *idle_checker_;
 };
 
-class SrsRtcStreamManager
+class SrsRtcStreamManager: public ISrsCoroutineHandler
 {
 private:
     srs_mutex_t lock;
     std::map<std::string, SrsRtcStream*> pool;
+    SrsSTCoroutine* trd_;
+    int stat_interval_;
+
 public:
     SrsRtcStreamManager();
     virtual ~SrsRtcStreamManager();
+
+    virtual srs_error_t cycle();
 public:
     //  create source when fetch from cache failed.
     // @param r the client request.
@@ -152,11 +170,16 @@ public:
     SrsSTCoroutine* trd_;
     virtual srs_error_t cycle();
     srs_error_t do_cycle();
-    srs_error_t start();
+    srs_error_t start(std::string rtmpurl);
     SrsRtcRtmpUpstream(ISrsSourceBridger* bridger);
     virtual ~SrsRtcRtmpUpstream() ;
+    void stop();
+    void clear();
 private:
     ISrsSourceBridger* bridger_;
+    SrsSimpleRtmpClient* sdk_;
+    std::string rtmpurl_;
+    bool bridger_pubed_;
 };
 
 // A Source is a stream, to publish and to play with, binding to SrsRtcPublishStream and SrsRtcPlayStream.
@@ -200,10 +223,11 @@ public:
     virtual SrsContextId pre_source_id();
     // Get the bridger.
     ISrsSourceBridger* bridger();
+    void check_idle();
 public:
     // Create consumer
     // @param consumer, output the create consumer.
-    virtual srs_error_t create_consumer(SrsRtcConsumer*& consumer);
+    virtual srs_error_t create_consumer(SrsRtcConsumer*& consumer, ISrsRtcIdleChecker *idle_checker);
     // Dumps packets in cache to consumer.
     // @param ds, whether dumps the sequence header.
     // @param dm, whether dumps the metadata.

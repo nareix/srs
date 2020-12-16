@@ -529,7 +529,7 @@ srs_error_t SrsRtcPlayStream::cycle()
 
     SrsRtcConsumer* consumer = NULL;
     SrsAutoFree(SrsRtcConsumer, consumer);
-    if ((err = source->create_consumer(consumer)) != srs_success) {
+    if ((err = source->create_consumer(consumer, this)) != srs_success) {
         return srs_error_wrap(err, "create consumer, source=%s", req_->get_stream_url().c_str());
     }
 
@@ -907,6 +907,12 @@ srs_error_t SrsRtcPlayStream::do_request_keyframe(uint32_t ssrc, SrsContextId ci
     publisher->request_keyframe(ssrc);
 
     return err;
+}
+
+void SrsRtcPlayStream::check_idle(int *bytes) {
+    *bytes += info.nn_rtp_bytes;
+    info.nn_rtp_bytes = 0;
+    // srs_trace("playstream: check idle info=rtpbytes.%d", info.nn_rtp_bytes);
 }
 
 SrsRtcPublishStream::SrsRtcPublishStream(SrsRtcConnection* session, const SrsContextId& cid)
