@@ -60,12 +60,19 @@ class SrsRtcPlayStreamStatistic;
 class SrsErrorPithyPrint;
 class ISrsRtcIdleChecker;
 
+class RtcIdleCheckResult 
+{
+public:
+    int bytes;
+    std::string reqid;
+};
+
 class ISrsRtcIdleChecker
 {
 public:
     ISrsRtcIdleChecker() {}
     virtual ~ISrsRtcIdleChecker() {}
-    virtual void check_idle(int *bytes) = 0;
+    virtual void check_idle(RtcIdleCheckResult *res) = 0;
 };
 
 class SrsNtp
@@ -110,7 +117,7 @@ public:
     virtual srs_error_t dump_packets(std::vector<SrsRtpPacket2*>& pkts);
     // Wait for at-least some messages incoming in queue.
     virtual void wait(int nb_msgs);
-    void check_idle(int *bytes);
+    void check_idle(RtcIdleCheckResult *res);
 private:
     ISrsRtcIdleChecker *idle_checker_;
 };
@@ -121,7 +128,6 @@ private:
     srs_mutex_t lock;
     std::map<std::string, SrsRtcStream*> pool;
     SrsSTCoroutine* trd_;
-    int stat_interval_;
 
 public:
     SrsRtcStreamManager();

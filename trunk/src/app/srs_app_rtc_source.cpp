@@ -49,6 +49,8 @@
 #include <srs_app_rtc_codec.hpp>
 #endif
 
+#include <srs_service_http_client.hpp>
+
 // Firefox defaults as 109, Chrome is 111.
 const int kAudioPayloadType     = 111;
 const int kAudioChannel         = 2;
@@ -166,8 +168,8 @@ SrsRtcConsumer::~SrsRtcConsumer()
     srs_cond_destroy(mw_wait);
 }
 
-void SrsRtcConsumer::check_idle(int *bytes) {
-    idle_checker_->check_idle(bytes);
+void SrsRtcConsumer::check_idle(RtcIdleCheckResult *res) {
+    idle_checker_->check_idle(res);
 }
 
 void SrsRtcConsumer::update_source_id()
@@ -226,7 +228,6 @@ SrsRtcStreamManager::SrsRtcStreamManager()
 {
     lock = NULL;
     trd_ = NULL;
-    stat_interval_ = 3;
 }
 
 SrsRtcStreamManager::~SrsRtcStreamManager()
@@ -253,7 +254,7 @@ srs_error_t SrsRtcStreamManager::cycle() {
             s->check_idle();
         }
 
-        srs_usleep(stat_interval_*SRS_UTIME_SECONDS);
+        srs_usleep(_srs_config->get_report_interval()*SRS_UTIME_SECONDS/1000);
     }
 }
 
@@ -571,11 +572,42 @@ ISrsSourceBridger* SrsRtcStream::bridger()
 }
 
 void SrsRtcStream::check_idle() {
-    int bytes = 0;
     for (auto it = consumers.begin(); it != consumers.end(); it++) {
         SrsRtcConsumer *c = *it;
-        c->check_idle(&bytes);
+        RtcIdleCheckResult check = {};
+
+        c->check_idle(&check);
+
+        SrsHttpUri url;
+        std::string report_url = _srs_config->get_report_url();
+        if (url.initialize(report_url) != srs_success) {
+            srs_warn("invalid report_url %s", report_url.c_str());
+            return;
+        }
+
+        SrsHttpClient hc;
+        int port = url.get_port();
+        srs_utime_t timeout = 3*SRS_UTIME_SECONDS;
+        if (hc.initialize(url.get_schema(), url.get_host(), port, timeout) != srs_success) {
+            srs_warn("invalid report_url %s", report_url.c_str());
+            return;
+        }
+
+        SrsJsonObject *post = SrsJsonAny::object();
+        SrsAutoFree(SrsJsonObject, post);
+        post->set("domain", SrsJsonAny::str(req->host.c_str()));
+        post->set("reqId", SrsJsonAny::str(check.reqid.c_str()));
+        post->set("stream", SrsJsonAny::str(req->stream.c_str()));
+        post->set("bytes", SrsJsonAny::integer(check.bytes));
+        post->set("duration", SrsJsonAny::integer(_srs_config->get_report_interval()/1000));
+
+        srs_trace("report url=%s post=%s", report_url.c_str(), post->dumps().c_str());
+
+        ISrsHttpMessage *postres = NULL;
+        SrsAutoFree(ISrsHttpMessage, postres);
+        hc.post(url.get_path(), post->dumps(), &postres);
     }
+
 }
 
 srs_error_t SrsRtcStream::create_consumer(SrsRtcConsumer*& consumer, ISrsRtcIdleChecker *idle_checker)

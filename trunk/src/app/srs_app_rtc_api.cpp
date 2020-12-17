@@ -155,6 +155,7 @@ srs_error_t SrsGoApiRtcPlay::do_serve_http(ISrsHttpResponseWriter* w, ISrsHttpMe
     SrsRequest request;
     request.app = app;
     request.stream = stream_name;
+    request.host = r->host();
 
     if ((prop = req->ensure_property_string("rtmpurl")) != NULL) {
         request.rtmpUrl = prop->to_str();

@@ -309,7 +309,7 @@ private:
 // inteface ISrsRtcPLIWorkerHandler
 public:
     virtual srs_error_t do_request_keyframe(uint32_t ssrc, SrsContextId cid);
-    void check_idle(int *bytes);
+    void check_idle(RtcIdleCheckResult *res);
 };
 
 // A RTC publish stream, client push and publish stream to SRS.

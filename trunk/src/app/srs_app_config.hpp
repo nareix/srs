@@ -1090,6 +1090,9 @@ public:
     // The device name configed in args of directive.
     // @return the disk device name to stat. NULL if not configed.
     virtual SrsConfDirective* get_stats_disk_device();
+
+    virtual std::string get_report_url();
+    virtual int get_report_interval();
 };
 
 #endif

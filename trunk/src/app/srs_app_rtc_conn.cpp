@@ -909,8 +909,9 @@ srs_error_t SrsRtcPlayStream::do_request_keyframe(uint32_t ssrc, SrsContextId ci
     return err;
 }
 
-void SrsRtcPlayStream::check_idle(int *bytes) {
-    *bytes += info.nn_rtp_bytes;
+void SrsRtcPlayStream::check_idle(RtcIdleCheckResult *res) {
+    res->bytes += info.nn_rtp_bytes;
+    res->reqid = session_->username();
     info.nn_rtp_bytes = 0;
     // srs_trace("playstream: check idle info=rtpbytes.%d", info.nn_rtp_bytes);
 }
