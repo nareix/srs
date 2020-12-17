@@ -339,39 +339,31 @@ ISrsRtcStreamEventHandler::~ISrsRtcStreamEventHandler()
 {
 }
 
-SrsRtcRtmpUpstream::SrsRtcRtmpUpstream(ISrsSourceBridger* bridger) {
+SrsRtcRtmpUpstream::SrsRtcRtmpUpstream(ISrsSourceBridger *bridger, SrsRtcStream *parent) {
     trd_ = NULL;
-    bridger_ = bridger;
     sdk_ = NULL;
-    bridger_pubed_ = false;
+    bridger_ = bridger;
+    parent_ = parent;
+    stopped = false;
+    ended = false;
 }
 
 SrsRtcRtmpUpstream::~SrsRtcRtmpUpstream() {
-    stop();
-}
-
-void SrsRtcRtmpUpstream::clear() {
-    srs_trace("rtmp upstream: stopped");
-
-    if (sdk_) {
-        sdk_->close();
-        srs_freep(sdk_);
-        sdk_ = NULL;
-    }
-
-    if (bridger_pubed_) {
-        bridger_pubed_ = false;
-        bridger_->on_unpublish();
-    }
-}
-
-void SrsRtcRtmpUpstream::stop() {
     clear();
 
     if (trd_) {
         trd_->stop();
         srs_freep(trd_);
         trd_ = NULL;
+    }
+}
+
+void SrsRtcRtmpUpstream::clear() {
+    if (sdk_) {
+        srs_trace("rtmp upstream: stopped");
+        sdk_->close();
+        srs_freep(sdk_);
+        sdk_ = NULL;
     }
 }
 
@@ -422,17 +414,14 @@ srs_error_t SrsRtcRtmpUpstream::do_cycle() {
 
     srs_trace("rtmp upstream: start play");
 
-    if ((err = bridger_->on_publish()) != srs_success) {
-        err = srs_error_wrap(err, "bridger publish");
-        return err;
-    }
-
-    bridger_pubed_ = true;
-
     while (true) {
         SrsCommonMessage* msg = NULL;
         if ((err = sdk->recv_message(&msg)) != srs_success) {
             err = srs_error_wrap(err, "recv message");
+            return err;
+        }
+
+        if (stopped) {
             return err;
         }
 
@@ -477,6 +466,11 @@ srs_error_t SrsRtcRtmpUpstream::cycle() {
         do_cycle();
         clear();
 
+        if (stopped) {
+            ended = true;
+            return err;
+        }
+
         srs_usleep(3 * SRS_UTIME_SECONDS);
     }
 }
@@ -487,7 +481,6 @@ SrsRtcStream::SrsRtcStream()
     is_delivering_packets_ = false;
 
     publish_stream_ = NULL;
-    rtmp_upstream_ = NULL;
     stream_desc_ = NULL;
 
     req = NULL;
@@ -496,8 +489,6 @@ SrsRtcStream::SrsRtcStream()
 #else
     bridger_ = new SrsRtcDummyBridger();
 #endif
-
-    rtmp_upstream_ = new SrsRtcRtmpUpstream(bridger_);
 }
 
 SrsRtcStream::~SrsRtcStream()
@@ -509,7 +500,6 @@ SrsRtcStream::~SrsRtcStream()
     srs_freep(req);
     srs_freep(bridger_);
     srs_freep(stream_desc_);
-    srs_freep(rtmp_upstream_);
 }
 
 srs_error_t SrsRtcStream::initialize(SrsRequest* r)
@@ -572,6 +562,14 @@ ISrsSourceBridger* SrsRtcStream::bridger()
 }
 
 void SrsRtcStream::check_idle() {
+    for (auto it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); it++) {
+        SrsRtcRtmpUpstream *s = *it;
+        if (s->ended) {
+            srs_freep(s);
+            rtmp_upstreams_.erase(it);
+        }
+    }
+
     for (auto it = consumers.begin(); it != consumers.end(); it++) {
         SrsRtcConsumer *c = *it;
         RtcIdleCheckResult check = {};
@@ -615,7 +613,10 @@ srs_error_t SrsRtcStream::create_consumer(SrsRtcConsumer*& consumer, ISrsRtcIdle
     srs_error_t err = srs_success;
 
     if (consumers.size() == 0) {
-        rtmp_upstream_->start(req->rtmpUrl);
+        SrsRtcRtmpUpstream *s = new SrsRtcRtmpUpstream(bridger_, this);
+        s->start(req->rtmpUrl);
+        rtmp_upstreams_.push_back(s);
+        bridger_->on_publish();
     }
     srs_trace("RTC: on consumer create count=%d", consumers.size());
 
@@ -656,7 +657,11 @@ void SrsRtcStream::on_consumer_destroy(SrsRtcConsumer* consumer)
     srs_trace("RTC: on consumer destroy count=%d", consumers.size());
 
     if (consumers.size() == 0) {
-        rtmp_upstream_->stop();
+        bridger_->on_unpublish();
+        for (auto it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); it++) {
+            SrsRtcRtmpUpstream *s = *it;
+            s->stopped = true;
+        }
     }
 }
 

@@ -177,11 +177,13 @@ public:
     virtual srs_error_t cycle();
     srs_error_t do_cycle();
     srs_error_t start(std::string rtmpurl);
-    SrsRtcRtmpUpstream(ISrsSourceBridger* bridger);
+    SrsRtcRtmpUpstream(ISrsSourceBridger *bridger, SrsRtcStream *parent);
     virtual ~SrsRtcRtmpUpstream() ;
-    void stop();
-    void clear();
+    bool stopped;
+    bool ended;
 private:
+    void clear();
+    SrsRtcStream *parent_;
     ISrsSourceBridger* bridger_;
     SrsSimpleRtmpClient* sdk_;
     std::string rtmpurl_;
@@ -201,7 +203,6 @@ private:
     SrsContextId _pre_source_id;
     SrsRequest* req;
     ISrsRtcPublishStream* publish_stream_;
-    SrsRtcRtmpUpstream *rtmp_upstream_;
     // Transmux RTMP to RTC.
     ISrsSourceBridger* bridger_;
     // Steam description for this steam.
@@ -209,6 +210,7 @@ private:
 private:
     // To delivery stream to clients.
     std::vector<SrsRtcConsumer*> consumers;
+    std::vector<SrsRtcRtmpUpstream*> rtmp_upstreams_;
     // Whether stream is created, that is, SDP is done.
     bool is_created_;
     // Whether stream is delivering data, that is, DTLS is done.
