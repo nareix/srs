@@ -562,11 +562,13 @@ ISrsSourceBridger* SrsRtcStream::bridger()
 }
 
 void SrsRtcStream::check_idle() {
-    for (auto it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); it++) {
+    for (auto it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); ) {
         SrsRtcRtmpUpstream *s = *it;
         if (s->ended) {
+            it = rtmp_upstreams_.erase(it);
             srs_freep(s);
-            rtmp_upstreams_.erase(it);
+        } else {
+            it++;
         }
     }
 
