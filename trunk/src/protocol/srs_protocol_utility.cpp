@@ -117,14 +117,14 @@ void srs_discovery_tc_url(string tcUrl, string& schema, string& host, string& vh
         app = url;
     }
     
-    vhost = host;
-    srs_vhost_resolve(vhost, app, param);
-    srs_vhost_resolve(vhost, stream, param);
+    // vhost = host;
+    // srs_vhost_resolve(vhost, app, param);
+    // srs_vhost_resolve(vhost, stream, param);
     
-    // Ignore when the param only contains the default vhost.
-    if (param == "?vhost=" SRS_CONSTS_RTMP_DEFAULT_VHOST) {
-        param = "";
-    }
+    // // Ignore when the param only contains the default vhost.
+    // if (param == "?vhost=" SRS_CONSTS_RTMP_DEFAULT_VHOST) {
+    //     param = "";
+    // }
 }
 
 void srs_parse_query_string(string q, map<string,string>& query)
@@ -185,11 +185,11 @@ string srs_generate_tc_url(string host, string vhost, string app, int port)
 {
     string tcUrl = "rtmp://";
     
-    if (vhost == SRS_CONSTS_RTMP_DEFAULT_VHOST) {
+    // if (vhost == SRS_CONSTS_RTMP_DEFAULT_VHOST) {
         tcUrl += host;
-    } else {
-        tcUrl += vhost;
-    }
+    // } else {
+        // tcUrl += vhost;
+    // }
     
     if (port != SRS_CONSTS_RTMP_DEFAULT_PORT) {
         tcUrl += ":" + srs_int2str(port);
@@ -217,7 +217,7 @@ string srs_generate_stream_with_query(string host, string vhost, string stream, 
     
     // Well, if vhost exists, always append in query string.
     if (!guessVhost.empty()) {
-        query += "&vhost=" + guessVhost;
+        // query += "&vhost=" + guessVhost;
     }
     
     // Remove the start & when param is empty.

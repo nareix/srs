@@ -391,8 +391,8 @@ srs_error_t SrsRtcRtmpUpstream::start(std::string rtmpurl) {
 srs_error_t SrsRtcRtmpUpstream::do_cycle() {
     srs_error_t err = srs_success;
 
-    srs_utime_t cto = 3 * SRS_UTIME_SECONDS;
-    srs_utime_t sto = 3 * SRS_UTIME_SECONDS;
+    srs_utime_t cto = 10 * SRS_UTIME_SECONDS;
+    srs_utime_t sto = 10 * SRS_UTIME_SECONDS;
     std::string url = rtmpurl_;
 
     SrsSimpleRtmpClient* sdk = new SrsSimpleRtmpClient(url, cto, sto);
@@ -407,7 +407,7 @@ srs_error_t SrsRtcRtmpUpstream::do_cycle() {
 
     srs_trace("rtmp upstream: connected");
 
-    if ((err = sdk->play(60000)) != srs_success) {
+    if ((err = sdk->play(128)) != srs_success) {
         err = srs_error_wrap(err, "sdk publish");
         return err;
     }

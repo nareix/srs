@@ -1093,6 +1093,7 @@ public:
 
     virtual std::string get_report_url();
     virtual int get_report_interval();
+    virtual std::string get_default_rtc_rtmp_souce();
 };
 
 #endif

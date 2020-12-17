@@ -162,7 +162,7 @@ srs_error_t SrsGoApiRtcPlay::do_serve_http(ISrsHttpResponseWriter* w, ISrsHttpMe
     }
 
     if (request.rtmpUrl == "") {
-        request.rtmpUrl = "rtmp://localhost:19350/a/b";
+        request.rtmpUrl = _srs_config->get_default_rtc_rtmp_souce();
     }
 
     // TODO: FIXME: Parse vhost.
