@@ -660,8 +660,8 @@ void SrsRtcStream::on_consumer_destroy(SrsRtcConsumer* consumer)
 
     if (consumers.size() == 0) {
         bridger_->on_unpublish();
-        for (auto it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); it++) {
-            SrsRtcRtmpUpstream *s = *it;
+        for (auto its = rtmp_upstreams_.begin(); its != rtmp_upstreams_.end(); its++) {
+            SrsRtcRtmpUpstream *s = *its;
             s->stopped = true;
         }
     }
