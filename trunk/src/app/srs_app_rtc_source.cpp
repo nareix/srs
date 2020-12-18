@@ -249,7 +249,7 @@ srs_error_t SrsRtcStreamManager::cycle() {
         }
 
         // srs_trace("rtc stream manager check idle");
-        for (auto it = pool.begin(); it != pool.end(); it++) {
+        for (std::map<std::string, SrsRtcStream*>::iterator it = pool.begin(); it != pool.end(); it++) {
             SrsRtcStream *s = it->second;
             s->check_idle();
         }
@@ -562,7 +562,7 @@ ISrsSourceBridger* SrsRtcStream::bridger()
 }
 
 void SrsRtcStream::check_idle() {
-    for (auto it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); ) {
+    for (std::vector<SrsRtcRtmpUpstream*>::iterator it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); ) {
         SrsRtcRtmpUpstream *s = *it;
         if (s->ended) {
             it = rtmp_upstreams_.erase(it);
@@ -572,7 +572,7 @@ void SrsRtcStream::check_idle() {
         }
     }
 
-    for (auto it = consumers.begin(); it != consumers.end(); it++) {
+    for (std::vector<SrsRtcConsumer*>::iterator it = consumers.begin(); it != consumers.end(); it++) {
         SrsRtcConsumer *c = *it;
         RtcIdleCheckResult check = {};
 
@@ -660,7 +660,7 @@ void SrsRtcStream::on_consumer_destroy(SrsRtcConsumer* consumer)
 
     if (consumers.size() == 0) {
         bridger_->on_unpublish();
-        for (auto its = rtmp_upstreams_.begin(); its != rtmp_upstreams_.end(); its++) {
+        for (std::vector<SrsRtcRtmpUpstream*>::iterator its = rtmp_upstreams_.begin(); its != rtmp_upstreams_.end(); its++) {
             SrsRtcRtmpUpstream *s = *its;
             s->stopped = true;
         }
