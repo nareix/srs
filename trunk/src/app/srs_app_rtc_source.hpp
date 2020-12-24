@@ -188,7 +188,6 @@ private:
     ISrsSourceBridger* bridger_;
     SrsSimpleRtmpClient* sdk_;
     std::string rtmpurl_;
-    bool bridger_pubed_;
 };
 
 // A Source is a stream, to publish and to play with, binding to SrsRtcPublishStream and SrsRtcPlayStream.
