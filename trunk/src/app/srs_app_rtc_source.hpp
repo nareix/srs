@@ -143,6 +143,7 @@ private:
     // Get the exists source, NULL when not exists.
     // update the request and return the exists source.
     virtual SrsRtcStream* fetch(SrsRequest* r);
+    virtual srs_error_t report_info(uint32_t count);
 };
 
 // Global singleton instance.
@@ -264,6 +265,8 @@ public:
     // Set and get stream description for souce
     void set_stream_desc(SrsRtcStreamDescription* stream_desc);
     std::vector<SrsRtcTrackDescription*> get_track_desc(std::string type, std::string media_type);
+
+    uint32_t get_consumers(); 
 };
 
 #ifdef SRS_FFMPEG_FIT

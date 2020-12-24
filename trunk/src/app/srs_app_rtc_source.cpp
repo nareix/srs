@@ -248,11 +248,15 @@ srs_error_t SrsRtcStreamManager::cycle() {
             return srs_error_wrap(err, "srs rtc rtmp upstream");
         }
 
+        uint32_t count = 0;
         // srs_trace("rtc stream manager check idle");
         for (auto it = pool.begin(); it != pool.end(); it++) {
             SrsRtcStream *s = it->second;
+            count += s->get_consumers();
             s->check_idle();
         }
+
+        report_info(count);
 
         srs_usleep(_srs_config->get_report_interval()*SRS_UTIME_SECONDS/1000);
     }
@@ -319,6 +323,40 @@ SrsRtcStream* SrsRtcStreamManager::fetch(SrsRequest* r)
     source->update_auth(r);
 
     return source;
+}
+
+srs_error_t SrsRtcStreamManager::report_info(uint32_t count) {
+    srs_error_t err = srs_success;
+
+    SrsHttpUri url;
+    std::string report_info_url = _srs_config->get_report_info_url();
+    err = url.initialize(report_info_url);
+    if (err != srs_success) {
+        srs_warn("invalid report_info_url %s", report_info_url.c_str());
+        return err;
+    }
+
+    SrsHttpClient hc;
+    int port = url.get_port();
+    srs_utime_t timeout = 3*SRS_UTIME_SECONDS;
+    err = hc.initialize(url.get_schema(), url.get_host(), port, timeout);
+    if (err != srs_success) {
+        srs_warn("invalid report_info_url %s", report_info_url.c_str());
+        return err;
+    }
+
+    SrsJsonObject *post = SrsJsonAny::object();
+    SrsAutoFree(SrsJsonObject, post);
+    post->set("id", SrsJsonAny::str(_srs_config->get_http_api_listen().c_str()));
+    post->set("count", SrsJsonAny::integer(count));
+
+    srs_trace("report info url=%s post=%s", report_info_url.c_str(), post->dumps().c_str());
+
+    ISrsHttpMessage *postres = NULL;
+    SrsAutoFree(ISrsHttpMessage, postres);
+    hc.post(url.get_path(), post->dumps(), &postres);
+
+    return err;
 }
 
 SrsRtcStreamManager* _srs_rtc_sources = new SrsRtcStreamManager();
@@ -794,6 +832,10 @@ std::vector<SrsRtcTrackDescription*> SrsRtcStream::get_track_desc(std::string ty
     }
 
     return track_descs;
+}
+
+uint32_t SrsRtcStream::get_consumers() {
+    return consumers.size();
 }
 
 #ifdef SRS_FFMPEG_FIT
