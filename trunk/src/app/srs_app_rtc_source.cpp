@@ -250,7 +250,8 @@ srs_error_t SrsRtcStreamManager::cycle() {
 
         uint32_t count = 0;
         // srs_trace("rtc stream manager check idle");
-        for (auto it = pool.begin(); it != pool.end(); it++) {
+        std::map<std::string, SrsRtcStream*>::iterator it;
+        for (it = pool.begin(); it != pool.end(); it++) {
             SrsRtcStream *s = it->second;
             count += s->get_consumers();
             s->check_idle();
@@ -600,7 +601,9 @@ ISrsSourceBridger* SrsRtcStream::bridger()
 }
 
 void SrsRtcStream::check_idle() {
-    for (auto it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); ) {
+
+    std::vector<SrsRtcRtmpUpstream*>::iterator it;
+    for (it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); ) {
         SrsRtcRtmpUpstream *s = *it;
         if (s->ended) {
             it = rtmp_upstreams_.erase(it);
@@ -610,8 +613,9 @@ void SrsRtcStream::check_idle() {
         }
     }
 
-    for (auto it = consumers.begin(); it != consumers.end(); it++) {
-        SrsRtcConsumer *c = *it;
+    std::vector<SrsRtcConsumer*>::iterator iter;
+    for (iter = consumers.begin(); iter != consumers.end(); iter++) {
+        SrsRtcConsumer *c = *iter;
         RtcIdleCheckResult check = {};
 
         c->check_idle(&check);
@@ -698,8 +702,9 @@ void SrsRtcStream::on_consumer_destroy(SrsRtcConsumer* consumer)
 
     if (consumers.size() == 0) {
         bridger_->on_unpublish();
-        for (auto it = rtmp_upstreams_.begin(); it != rtmp_upstreams_.end(); it++) {
-            SrsRtcRtmpUpstream *s = *it;
+        std::vector<SrsRtcRtmpUpstream*>::iterator iter;
+        for (iter = rtmp_upstreams_.begin(); iter != rtmp_upstreams_.end(); iter++) {
+            SrsRtcRtmpUpstream *s = *iter;
             s->stopped = true;
         }
     }
