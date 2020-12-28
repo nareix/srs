@@ -602,6 +602,8 @@ void SrsRtcStream::check_idle() {
         post->set("stream", SrsJsonAny::str(req->stream.c_str()));
         post->set("bytes", SrsJsonAny::integer(check.bytes));
         post->set("duration", SrsJsonAny::integer(_srs_config->get_report_interval()/1000));
+        post->set("localAddr", SrsJsonAny::str(check.localAddr.c_str()));
+        post->set("remoteAddr", SrsJsonAny::str(check.remoteAddr.c_str()));
 
         srs_trace("report url=%s post=%s", report_url.c_str(), post->dumps().c_str());
 

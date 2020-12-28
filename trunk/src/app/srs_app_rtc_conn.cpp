@@ -912,6 +912,16 @@ srs_error_t SrsRtcPlayStream::do_request_keyframe(uint32_t ssrc, SrsContextId ci
 void SrsRtcPlayStream::check_idle(RtcIdleCheckResult *res) {
     res->bytes += info.nn_rtp_bytes;
     res->reqid = session_->username();
+    res->localAddr = "";
+    res->remoteAddr = "";
+    std::vector<SrsUdpMuxSocket*> addrs = session_->peer_addresses();
+    if (addrs.size() > 0) {
+        std::string addr = addrs[0]->get_peer_ip();
+        char port[32];
+        sprintf(port, ":%d", addrs[0]->get_peer_port());
+        addr += port;
+        res->remoteAddr = addr;
+    }
     info.nn_rtp_bytes = 0;
     // srs_trace("playstream: check idle info=rtpbytes.%d", info.nn_rtp_bytes);
 }

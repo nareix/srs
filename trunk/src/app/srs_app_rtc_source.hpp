@@ -65,6 +65,8 @@ class RtcIdleCheckResult
 public:
     int bytes;
     std::string reqid;
+    std::string remoteAddr;
+    std::string localAddr;
 };
 
 class ISrsRtcIdleChecker
