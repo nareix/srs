@@ -1604,6 +1604,7 @@ SrsRequest* SrsRequest::copy()
     cp->rtmpUrl = rtmpUrl;
     cp->hub = hub;
     cp->uid = uid;
+    cp->method = method;
     cp->duration = duration;
     if (args) {
         cp->args = args->copy()->to_object();

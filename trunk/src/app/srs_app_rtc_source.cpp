@@ -642,6 +642,7 @@ void SrsRtcStream::check_idle() {
         post->set("domain", SrsJsonAny::str(req->host.c_str()));
         post->set("reqId", SrsJsonAny::str(check.reqid.c_str()));
         post->set("stream", SrsJsonAny::str(req->stream.c_str()));
+        post->set("method", SrsJsonAny::str(req->method.c_str()));
         post->set("bytes", SrsJsonAny::integer(check.bytes));
         post->set("duration", SrsJsonAny::integer(_srs_config->get_report_interval()/1000));
         post->set("localAddr", SrsJsonAny::str(check.localAddr.c_str()));

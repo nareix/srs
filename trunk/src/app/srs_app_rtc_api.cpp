@@ -172,6 +172,10 @@ srs_error_t SrsGoApiRtcPlay::do_serve_http(ISrsHttpResponseWriter* w, ISrsHttpMe
         request.stream = prop->to_str();
     }
 
+    if ((prop = req->ensure_property_string("method")) != NULL) {
+        request.method = prop->to_str();
+    }
+
     if (request.rtmpUrl == "") {
         request.rtmpUrl = _srs_config->get_default_rtc_rtmp_souce();
     }
