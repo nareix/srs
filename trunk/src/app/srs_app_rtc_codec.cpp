@@ -25,9 +25,26 @@
 #include <srs_kernel_codec.hpp>
 #include <srs_kernel_error.hpp>
 #include <srs_app_rtc_codec.hpp>
+#include <srs_app_log.hpp>
+#include <unistd.h>
 
-static const int kFrameBufMax   = 40960;
+static const int kFrameBufMax   = 1024*128;
 static const int kPacketBufMax  = 8192;
+
+// class DebugPCM {
+// public:
+//     DebugPCM(std::string filename) {
+//         fp = fopen(filename.c_str(), "wb+");
+//     }
+//     FILE *fp;
+//     void write(void *buf, int size) {
+//         fwrite(buf, size, 1, fp);
+//     }
+// };
+
+// static DebugPCM *debugResample = new DebugPCM("resample.pcm");
+// static DebugPCM *debugDecodeL = new DebugPCM("decodel.pcm");
+// static DebugPCM *debugDecodeR = new DebugPCM("decoder.pcm");
 
 static const char* id2codec_name(SrsAudioCodecId id) 
 {
@@ -109,12 +126,14 @@ srs_error_t SrsAudioDecoder::decode(SrsSample *pkt, char *buf, int &size)
     packet_->data = (uint8_t *)pkt->bytes;
     packet_->size = pkt->size;
 
+    // usleep(100* 1000); // ms
+
     int ret = avcodec_send_packet(codec_ctx_, packet_);
     if (ret < 0) {
         return srs_error_new(ERROR_RTC_RTP_MUXER, "Error submitting the packet to the decoder");
     }
 
-    int max = size;
+    // int max = size;
     size = 0;
 
     while (ret >= 0) {
@@ -130,11 +149,21 @@ srs_error_t SrsAudioDecoder::decode(SrsSample *pkt, char *buf, int &size)
             return srs_error_new(ERROR_RTC_RTP_MUXER, "Failed to calculate data size");
         }
 
-        for (int i = 0; i < frame_->nb_samples; i++) {
-            if (size + pcm_size * codec_ctx_->channels <= max) {
-                memcpy(buf + size,frame_->data[0] + pcm_size*codec_ctx_->channels * i, pcm_size * codec_ctx_->channels);
-                size += pcm_size * codec_ctx_->channels;
-            }
+        // for (int i = 0; i < frame_->nb_samples; i++) {
+        //     if (size + pcm_size * codec_ctx_->channels <= max) {
+        //         memcpy(buf + size,frame_->data[0] + pcm_size*codec_ctx_->channels * i, pcm_size * codec_ctx_->channels);
+        //         size += pcm_size * codec_ctx_->channels;
+        //     }
+        // }
+
+        // debugDecodeL->write(frame_->data[0], pcm_size*frame_->nb_samples);
+        // debugDecodeR->write(frame_->data[1], pcm_size*frame_->nb_samples);
+
+        for (int i = 0; i < codec_ctx_->channels; i++) {
+            int n = pcm_size*frame_->nb_samples;
+            assert(size+n < kFrameBufMax);
+            memcpy(buf+size,frame_->data[i], n);
+            size += n;
         }
     }
 
@@ -339,7 +368,7 @@ srs_error_t SrsAudioResample::initialize()
 
     src_nb_channels_ = av_get_channel_layout_nb_channels(src_ch_layout_);
     ret = av_samples_alloc_array_and_samples(&src_data_, &src_linesize_, src_nb_channels_,
-                                             src_nb_samples_, src_sample_fmt_, 0);
+                                             src_nb_samples_, src_sample_fmt_, 1);
     if (ret < 0) {
         return srs_error_new(ERROR_RTC_RTP_MUXER, "Could not allocate source samples");
     }
@@ -349,7 +378,7 @@ srs_error_t SrsAudioResample::initialize()
 
     dst_nb_channels_ = av_get_channel_layout_nb_channels(dst_ch_layout_);
     ret = av_samples_alloc_array_and_samples(&dst_data_, &dst_linesize_, dst_nb_channels_,
-                                             dst_nb_samples_, dst_sample_fmt_, 0);
+                                             dst_nb_samples_, dst_sample_fmt_, 1);
     if (ret < 0) {
         return srs_error_new(ERROR_RTC_RTP_MUXER, "Could not allocate destination samples");
     }
@@ -393,12 +422,19 @@ srs_error_t SrsAudioResample::resample(SrsSample *pcm, char *buf, int &size)
         return srs_error_new(ERROR_RTC_RTP_MUXER, "Could not get sample buffer size"); 
     }
 
-    int max = size;
-    size = 0;
-    if (max >= dst_bufsize) {
-        memcpy(buf, dst_data_[0], dst_bufsize);
-        size = dst_bufsize;
-    }
+    // srs_trace("resample ret %d", ret);
+    // debugResample->write(dst_data_[0], dst_bufsize);
+
+    // int max = size;
+    // size = 0;
+    // if (max >= dst_bufsize) {
+    //     memcpy(buf, dst_data_[0], dst_bufsize);
+    //     size = dst_bufsize;
+    // }
+
+    assert(dst_bufsize < kFrameBufMax);
+    memcpy(buf, dst_data_[0], dst_bufsize);
+    size = dst_bufsize;
 
     return err;
 }
@@ -456,11 +492,16 @@ srs_error_t SrsAudioRecode::transcode(SrsSample *pkt, char **buf, int *buf_len, 
         return srs_error_new(ERROR_RTC_RTP_MUXER, "dec_ nullptr");
     }
 
-    int decode_len = kPacketBufMax;
-    static char decode_buffer[kPacketBufMax];
+    char samplefmtstrbuf[128];
+    char *samplefmtstr = av_get_sample_fmt_string(samplefmtstrbuf, sizeof(samplefmtstrbuf), dec_->codec_ctx()->sample_fmt);
+    int pcm_size = av_get_bytes_per_sample(dec_->codec_ctx()->sample_fmt);
+
+    int decode_len = kFrameBufMax;
+    static char decode_buffer[kFrameBufMax];
     if ((err = dec_->decode(pkt, decode_buffer, decode_len)) != srs_success) {
         return srs_error_wrap(err, "decode error");
     }
+    // srs_trace("decode pcm_size %d sample fmt %s decode len %d samples %d", pcm_size, samplefmtstr, decode_len, dec_->codec_ctx()->frame_size);
 
     if (!resample_) {
         int channel_layout = av_get_default_channel_layout(dst_channels_);
