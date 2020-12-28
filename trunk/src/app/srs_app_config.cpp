@@ -3575,7 +3575,7 @@ srs_error_t SrsConfig::check_normal_config()
             && n != "ff_log_level" && n != "grace_final_wait" && n != "force_grace_quit"
             && n != "grace_start_wait" && n != "empty_ip_ok" && n != "disable_daemon_for_docker"
             && n != "inotify_auto_reload" && n != "auto_reload_for_docker" && n != "tcmalloc_release_rate"
-            && n != "report_interval" && n != "report_url" && n != "default_rtc_rtmp_source"
+            && n != "report_interval" && n != "report_url" && n != "default_rtc_rtmp_source" && n != "report_info_url"
             ) {
             return srs_error_new(ERROR_SYSTEM_CONFIG_INVALID, "illegal directive %s", n.c_str());
         }
@@ -4121,6 +4121,12 @@ vector<string> SrsConfig::get_listens()
         return ports;
     }
     
+    string port = srs_getenv(conf->arg0());
+    if (!port.empty()) {
+        ports.push_back(port);
+        return ports;
+    }
+
     for (int i = 0; i < (int)conf->args.size(); i++) {
         ports.push_back(conf->args.at(i));
     }
@@ -4138,6 +4144,16 @@ string SrsConfig::get_pid_file()
         return DEFAULT;
     }
     
+    string pid = srs_getenv(conf->arg0());
+    if (!pid.empty()) {
+        return pid;
+    }
+
+    // If configed as ENV, but no ENV set, use default value.
+    if (srs_string_starts_with(conf->arg0(), "$")) {
+        return DEFAULT;
+    }
+
     return conf->arg0();
 }
 
@@ -4172,7 +4188,17 @@ string SrsConfig::get_work_dir() {
     if( !conf || conf->arg0().empty()) {
         return DEFAULT;
     }
-    
+
+    string dir = srs_getenv(conf->arg0());
+    if (!dir.empty()) {
+        return dir;
+    }
+
+    // If configed as ENV, but no ENV set, use default value.
+    if (srs_string_starts_with(conf->arg0(), "$")) {
+        return DEFAULT;
+    }
+
     return conf->arg0();
 }
 
@@ -4732,6 +4758,16 @@ int SrsConfig::get_rtc_server_listen()
 
     conf = conf->get("listen");
     if (!conf || conf->arg0().empty()) {
+        return DEFAULT;
+    }
+
+    string port = srs_getenv(conf->arg0());
+    if (!port.empty()) {
+        return ::atoi(port.c_str());
+    }
+
+    // If configed as ENV, but no ENV set, use default value.
+    if (srs_string_starts_with(conf->arg0(), "$")) {
         return DEFAULT;
     }
 
@@ -6766,6 +6802,16 @@ string SrsConfig::get_log_file()
     if (!conf || conf->arg0().empty()) {
         return DEFAULT;
     }
+
+    string file = srs_getenv(conf->arg0());
+    if (!file.empty()) {
+        return file;
+    }
+
+    // If configed as ENV, but no ENV set, use default value.
+    if (srs_string_starts_with(conf->arg0(), "$")) {
+        return DEFAULT;
+    }
     
     return conf->arg0();
 }
@@ -7551,6 +7597,16 @@ string SrsConfig::get_http_api_listen()
     
     conf = conf->get("listen");
     if (!conf || conf->arg0().empty()) {
+        return DEFAULT;
+    }
+
+    string port = srs_getenv(conf->arg0());
+    if (!port.empty()) {
+        return port;
+    }
+
+    // If configed as ENV, but no ENV set, use default value.
+    if (srs_string_starts_with(conf->arg0(), "$")) {
         return DEFAULT;
     }
     
@@ -8366,6 +8422,14 @@ SrsConfDirective* SrsConfig::get_stats_disk_device()
 
 std::string SrsConfig::get_report_url() {
     SrsConfDirective *conf = root->get("report_url");
+    if (conf == NULL) {
+        return "";
+    }
+    return conf->arg0();
+}
+
+std::string SrsConfig::get_report_info_url() {
+    SrsConfDirective *conf = root->get("report_info_url");
     if (conf == NULL) {
         return "";
     }
