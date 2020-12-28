@@ -154,11 +154,22 @@ srs_error_t SrsGoApiRtcPlay::do_serve_http(ISrsHttpResponseWriter* w, ISrsHttpMe
 
     SrsRequest request;
     request.app = app;
-    request.stream = stream_name;
     request.host = r->host();
 
     if ((prop = req->ensure_property_string("rtmpurl")) != NULL) {
         request.rtmpUrl = prop->to_str();
+    }
+
+    if ((prop = req->ensure_property_string("hub")) != NULL) {
+        request.hub = prop->to_str();
+    }
+
+    if ((prop = req->ensure_property_string("uid")) != NULL) {
+        request.uid = prop->to_str();
+    }
+
+    if ((prop = req->ensure_property_string("stream")) != NULL) {
+        request.stream = prop->to_str();
     }
 
     if (request.rtmpUrl == "") {
