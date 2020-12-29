@@ -916,11 +916,7 @@ void SrsRtcPlayStream::check_idle(RtcIdleCheckResult *res) {
     res->remoteAddr = "";
     std::vector<SrsUdpMuxSocket*> addrs = session_->peer_addresses();
     if (addrs.size() > 0) {
-        std::string addr = addrs[0]->get_peer_ip();
-        char port[32];
-        sprintf(port, ":%d", addrs[0]->get_peer_port());
-        addr += port;
-        res->remoteAddr = addr;
+        res->remoteAddr = addrs[0]->get_peer_ip();
     }
     info.nn_rtp_bytes = 0;
     // srs_trace("playstream: check idle info=rtpbytes.%d", info.nn_rtp_bytes);
