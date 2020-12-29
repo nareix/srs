@@ -446,7 +446,7 @@ public:
     std::string swfUrl;
     std::string rtmpUrl;
     std::string hub;
-    std::string uid;
+    int uid;
     std::string method;
     double objectEncoding;
 // The data discovery from request.
