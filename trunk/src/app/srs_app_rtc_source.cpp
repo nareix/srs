@@ -241,6 +241,11 @@ SrsRtcStreamManager::~SrsRtcStreamManager()
 srs_error_t SrsRtcStreamManager::cycle() {
     srs_error_t err = srs_success;
 
+    uint32_t count = 0;
+    uint32_t elapsed = 0;
+    int infoInter = _srs_config->get_report_info_interval();
+    int reportInter = _srs_config->get_report_interval();
+    int max = infoInter > reportInter ? infoInter : reportInter;
     while (true) {
         // We always check status first.
         // @see https://github.com/ossrs/srs/issues/1634#issuecomment-597571561
@@ -248,18 +253,31 @@ srs_error_t SrsRtcStreamManager::cycle() {
             return srs_error_wrap(err, "srs rtc rtmp upstream");
         }
 
-        uint32_t count = 0;
-        // srs_trace("rtc stream manager check idle");
-        std::map<std::string, SrsRtcStream*>::iterator it;
-        for (it = pool.begin(); it != pool.end(); it++) {
-            SrsRtcStream *s = it->second;
-            count += s->get_consumers();
-            s->check_idle();
+        if (elapsed % infoInter == 0) {
+            std::map<std::string, SrsRtcStream*>::iterator it;
+            for (it = pool.begin(); it != pool.end(); it++) {
+                SrsRtcStream *s = it->second;
+                count += s->get_consumers();
+            }
+
+            report_info(count);
+            count = 0;
         }
 
-        report_info(count);
+        if (elapsed % reportInter == 0) {
+            std::map<std::string, SrsRtcStream*>::iterator it;
+            for (it = pool.begin(); it != pool.end(); it++) {
+                SrsRtcStream *s = it->second;
+                s->check_idle();
+            }
+        }
 
-        srs_usleep(_srs_config->get_report_interval()*SRS_UTIME_SECONDS/1000);
+        if (elapsed == max) {
+            elapsed == 0;
+        }
+
+        srs_usleep(SRS_UTIME_SECONDS/1000);
+        elapsed++;
     }
 }
 

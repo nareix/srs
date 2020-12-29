@@ -1094,6 +1094,7 @@ public:
     virtual std::string get_report_url();
     virtual std::string get_report_info_url();
     virtual int get_report_interval();
+    virtual int get_report_info_interval();
     virtual std::string get_default_rtc_rtmp_souce();
 };
 
