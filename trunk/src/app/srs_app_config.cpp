@@ -8444,6 +8444,14 @@ int SrsConfig::get_report_interval() {
     return atoi(conf->arg0().c_str());
 }
 
+int SrsConfig::get_report_info_interval() {
+    SrsConfDirective *conf = root->get("report_info_interval");
+    if (conf == NULL) {
+        return 300;
+    }
+    return atoi(conf->arg0().c_str());
+}
+
 std::string SrsConfig::get_default_rtc_rtmp_souce() {
     SrsConfDirective *conf = root->get("default_rtc_rtmp_source");
     if (conf == NULL) {
