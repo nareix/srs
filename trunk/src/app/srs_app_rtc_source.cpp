@@ -653,12 +653,10 @@ void SrsRtcStream::check_idle() {
             return;
         }
 
-        int uid = atoi(req->uid.c_str());
-
         SrsJsonObject *post = SrsJsonAny::object();
         SrsAutoFree(SrsJsonObject, post);
         post->set("hub", SrsJsonAny::str(req->hub.c_str()));
-        post->set("uid", SrsJsonAny::integer(uid));
+        post->set("uid", SrsJsonAny::integer(req->uid));
         post->set("domain", SrsJsonAny::str(req->host.c_str()));
         post->set("reqId", SrsJsonAny::str(check.reqid.c_str()));
         post->set("stream", SrsJsonAny::str(req->stream.c_str()));
