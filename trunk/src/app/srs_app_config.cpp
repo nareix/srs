@@ -3575,7 +3575,7 @@ srs_error_t SrsConfig::check_normal_config()
             && n != "ff_log_level" && n != "grace_final_wait" && n != "force_grace_quit"
             && n != "grace_start_wait" && n != "empty_ip_ok" && n != "disable_daemon_for_docker"
             && n != "inotify_auto_reload" && n != "auto_reload_for_docker" && n != "tcmalloc_release_rate"
-            && n != "report_interval" && n != "report_url" && n != "default_rtc_rtmp_source" && n != "report_info_url"
+            && n != "report_interval" && n != "report_url" && n != "default_rtc_rtmp_source" && n != "report_info_url" && n != "report_info_interval"
             ) {
             return srs_error_new(ERROR_SYSTEM_CONFIG_INVALID, "illegal directive %s", n.c_str());
         }
