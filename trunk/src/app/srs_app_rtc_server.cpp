@@ -277,20 +277,29 @@ srs_error_t SrsRtcServer::listen_udp()
         return srs_error_new(ERROR_RTC_PORT, "invalid port=%d", port);
     }
 
-    string ip = srs_any_address_for_listener();
+    // string ip = srs_any_address_for_listener();
     srs_assert(listeners.empty());
 
+    vector<SrsIPAddress*>& ips = srs_get_local_ips();
+
     int nn_listeners = _srs_config->get_rtc_server_reuseport();
-    for (int i = 0; i < nn_listeners; i++) {
-        SrsUdpMuxListener* listener = new SrsUdpMuxListener(this, ip, port);
-
-        if ((err = listener->listen()) != srs_success) {
-            srs_freep(listener);
-            return srs_error_wrap(err, "listen %s:%d", ip.c_str(), port);
+    for (vector<SrsIPAddress*>::iterator it = ips.begin(); it != ips.end(); it++) {
+        SrsIPAddress *addr = *it;
+        std::string ip = addr->ip;
+        if (!addr->is_ipv4) {
+            continue;
         }
+        for (int i = 0; i < nn_listeners; i++) {
+            SrsUdpMuxListener* listener = new SrsUdpMuxListener(this, ip, port);
 
-        srs_trace("rtc listen at udp://%s:%d, fd=%d", ip.c_str(), port, listener->fd());
-        listeners.push_back(listener);
+            if ((err = listener->listen()) != srs_success) {
+                srs_freep(listener);
+                return srs_error_wrap(err, "listen %s:%d", ip.c_str(), port);
+            }
+
+            srs_trace("rtc listen at udp://%s:%d, fd=%d", ip.c_str(), port, listener->fd());
+            listeners.push_back(listener);
+        }
     }
 
     return err;

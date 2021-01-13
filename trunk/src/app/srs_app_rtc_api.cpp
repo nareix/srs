@@ -138,6 +138,19 @@ srs_error_t SrsGoApiRtcPlay::do_serve_http(ISrsHttpResponseWriter* w, ISrsHttpMe
     string srtp = r->query_get("encrypt");
     string dtls = r->query_get("dtls");
 
+    {
+        SrsHttpUri url;
+        if (url.initialize(streamurl) == srs_success) {
+            std::map<std::string, std::string> q;
+            srs_parse_query_string(url.get_query(), q);
+            const char *key = "eip";
+            if (q.find(key) != q.end()) {
+                eip = q[key];
+                srs_trace("use eip=%s from streamurl", eip.c_str());
+            }
+        }
+    }
+
     srs_trace("RTC play %s, api=%s, clientip=%s, app=%s, stream=%s, offer=%dB, eip=%s, srtp=%s, dtls=%s",
         streamurl.c_str(), api.c_str(), clientip.c_str(), app.c_str(), stream_name.c_str(), remote_sdp_str.length(), eip.c_str(),
         srtp.c_str(), dtls.c_str());
@@ -522,6 +535,7 @@ srs_error_t SrsGoApiRtcPublish::do_serve_http(ISrsHttpResponseWriter* w, ISrsHtt
         string schema, host, vhost, param;
         srs_discovery_tc_url(tcUrl, schema, host, vhost, app, stream_name, port, param);
     }
+
 
     // For client to specifies the EIP of server.
     string eip = r->query_get("eip");
