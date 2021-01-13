@@ -298,6 +298,7 @@ public:
     virtual srs_error_t on_publish();
     virtual void on_unpublish();
     virtual srs_error_t on_audio(SrsSharedPtrMessage* msg);
+    virtual srs_error_t on_audio_opus(SrsSharedPtrMessage *msg);
 private:
     srs_error_t transcode(char* adts_audio, int nn_adts_audio);
     srs_error_t package_opus(char* data, int size, SrsRtpPacket2** ppkt);

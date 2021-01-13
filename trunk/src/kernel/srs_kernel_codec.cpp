@@ -216,6 +216,19 @@ bool SrsFlvAudio::aac(char* data, int size)
     return sound_format == SrsAudioCodecIdAAC;
 }
 
+bool SrsFlvAudio::opus(char* data, int size)
+{
+    // 1bytes required.
+    if (size < 1) {
+        return false;
+    }
+
+    char sound_format = data[0];
+    sound_format = (sound_format >> 4) & 0x0F;
+
+    return sound_format == SrsAudioCodecIdOpus;
+}
+
 /**
  * the public data, event HLS disable, others can use it.
  */

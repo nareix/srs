@@ -289,6 +289,7 @@ public:
      * check codec aac.
      */
     static bool aac(char* data, int size);
+    static bool opus(char* data, int size);
 };
 
 /**
