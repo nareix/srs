@@ -464,7 +464,8 @@ srs_error_t SrsRtcRtmpUpstream::do_cycle() {
 
     srs_trace("rtmp upstream: connected");
 
-    if ((err = sdk->play(128)) != srs_success) {
+    //matching streamd chunk size
+    if ((err = sdk->play(65536)) != srs_success) {
         err = srs_error_wrap(err, "sdk publish");
         return err;
     }
@@ -976,6 +977,24 @@ void SrsRtcFromRtmpBridger::on_unpublish()
     // @see https://github.com/ossrs/srs/issues/1630#issuecomment-597979448
     meta->update_previous_vsh();
     meta->update_previous_ash();
+}
+
+srs_error_t SrsRtcFromRtmpBridger::on_audio_opus(SrsSharedPtrMessage *msg)
+{
+    srs_error_t err = srs_success;
+
+    SrsRtpPacket2* pkt = NULL;
+    SrsAutoFree(SrsRtpPacket2, pkt);
+
+    // skip two bytes, flv audio tag header, aac/opus header(decided by ffmpeg flvenc.c)
+    if ((err = package_opus(msg->payload+2, msg->size-2, &pkt)) != srs_success) {
+        return srs_error_wrap(err, "package opus");
+    }
+
+    if ((err = source_->on_rtp(pkt)) != srs_success) {
+        return srs_error_wrap(err, "consume opus");
+    }
+    return err;
 }
 
 srs_error_t SrsRtcFromRtmpBridger::on_audio(SrsSharedPtrMessage* msg)

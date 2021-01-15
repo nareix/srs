@@ -2118,7 +2118,7 @@ bool SrsSource::can_publish(bool is_edge)
 srs_error_t SrsSource::on_meta_data(SrsCommonMessage* msg, SrsOnMetaDataPacket* metadata)
 {
     srs_error_t err = srs_success;
-    
+
     // if allow atc_auto and bravo-atc detected, open atc for vhost.
     SrsAmf0Any* prop = NULL;
     atc = _srs_config->get_atc(req->vhost);
@@ -2210,6 +2210,14 @@ srs_error_t SrsSource::on_audio_imp(SrsSharedPtrMessage* msg)
 {
     srs_error_t err = srs_success;
     
+    if (SrsFlvAudio::opus(msg->payload, msg->size)) {
+        // For bridger to consume the message.
+        if (bridger && (err = bridger->on_audio_opus(msg)) != srs_success) {
+            return srs_error_wrap(err, "bridger consume audio");
+        }
+        return err;
+    }
+
     bool is_aac_sequence_header = SrsFlvAudio::sh(msg->payload, msg->size);
     bool is_sequence_header = is_aac_sequence_header;
     
